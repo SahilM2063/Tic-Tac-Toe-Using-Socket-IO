@@ -128,9 +128,12 @@ function App() {
     const userName = result.value;
     setPlayerName(userName);
 
-    const newSocket = io("http://localhost:6969", {
-      autoConnect: true,
-    });
+    const newSocket = io(
+      "https://tic-tac-toe-backend-ohv4odvwq-makadiasahil9846-gmailcom.vercel.app/",
+      {
+        autoConnect: true,
+      }
+    );
 
     newSocket?.emit("request_to_play", {
       playerName: userName,
