@@ -2,6 +2,8 @@
 import React, { useEffect, useState } from "react";
 import tictactoeBg from "./assets/tictactoe-bg.svg";
 import SquareBox from "./components/SquareBox";
+import { io } from "socket.io-client";
+import Swal from "sweetalert2";
 
 const arrItems = [
   [1, 2, 3],
@@ -14,6 +16,9 @@ function App() {
   const [currentPlayer, setCurrentPlayer] = useState("circle");
   const [finishedState, setFinishedState] = useState(false);
   const [finishedArray, setFinishedArray] = useState([]);
+  const [playOnline, setPlayOnline] = useState(false);
+  const [socket, setSocket] = useState(null);
+  const [playerName, setPlayerName] = useState("");
 
   const checkWinner = () => {
     // dynamic row and static column
@@ -43,15 +48,15 @@ function App() {
       gameState[0][0] === gameState[1][1] &&
       gameState[1][1] === gameState[2][2]
     ) {
-      setFinishedArray([0,4,8]);
+      setFinishedArray([0, 4, 8]);
       return gameState[0][0];
     }
-    
+
     if (
       gameState[0][2] === gameState[1][1] &&
       gameState[1][1] === gameState[2][0]
-      ) {
-      setFinishedArray([2,4,6]);
+    ) {
+      setFinishedArray([2, 4, 6]);
       return gameState[0][2];
     }
 
@@ -62,9 +67,44 @@ function App() {
     if (isDrawMatch) {
       return "draw";
     }
-    console.log(isDrawMatch);
+    // console.log(isDrawMatch);
 
     return null;
+  };
+
+  socket?.on("connect", () => {
+    setPlayOnline(true);
+  });
+
+  const getPlayerName = async () => {
+    const result = await Swal.fire({
+      title: "Enter your name",
+      input: "text",
+      showCancelButton: true,
+      inputValidator: (value) => {
+        if (!value) {
+          return "You need to write something!";
+        }
+      },
+    });
+
+    return result;
+  };
+
+  const handleJoinPlayer = async () => {
+    const result = await getPlayerName();
+
+    if (!result.isConfirmed) {
+      return;
+    }
+
+    const userName = result.value;
+    setPlayerName(userName);
+
+    const newSocket = io("http://localhost:6969", {
+      autoConnect: true,
+    });
+    setSocket(newSocket);
   };
 
   useEffect(() => {
@@ -99,33 +139,42 @@ function App() {
             Won The Game! 💫✨
           </h3>
         ))}
-      <div className="container w-full min-w-md xs:w-[96%] md:w-[80%] lg:w-[40%] xl:w-[40%] 2xl:w-[30%] bg-[#2B0040] rounded-2xl flex flex-col justify-center items-center py-2">
-        <div className="turn-board w-full grid grid-cols-2 place-content-between gap-2 xs:px-4 sm:px-6 md:px-12 lg:px-12 xl:px-12 2xl:px-10 mt-4">
-          <div className="tag p-3 bg-[#E2BE00] rounded-lg text-center font-Gilroy font-bold text-lg">
-            You
+      {!playOnline ? (
+        <button
+          onClick={handleJoinPlayer}
+          className="font-Gilroy font-semibold text-lg tracking-wide bg-[#E2BE00] py-4 px-6 rounded-lg"
+        >
+          Play Online
+        </button>
+      ) : (
+        <div className="container w-full min-w-md xs:w-[96%] md:w-[80%] lg:w-[40%] xl:w-[40%] 2xl:w-[30%] bg-[#2B0040] rounded-2xl flex flex-col justify-center items-center py-2">
+          <div className="turn-board w-full grid grid-cols-2 place-content-between gap-2 xs:px-4 sm:px-6 md:px-12 lg:px-12 xl:px-12 2xl:px-10 mt-4">
+            <div className="tag p-3 bg-[#E2BE00] rounded-lg text-center font-Gilroy font-bold text-lg">
+              You
+            </div>
+            <div className="tag p-3 bg-[#48D2FE]  rounded-lg text-center font-Gilroy font-bold text-lg">
+              Opponent
+            </div>
           </div>
-          <div className="tag p-3 bg-[#48D2FE]  rounded-lg text-center font-Gilroy font-bold text-lg">
-            Opponent
+          <div className="game-board w-full grid grid-cols-3 grid-rows-3 gap-4 place-items-center xs:px-4 sm:px-6 md:px-14 lg:px-12 xl:px-16 2xl:px-20 xs:py-4 sm:py-4 md:py-8 lg:py-10 xl:py-10 2xl:p-10">
+            {gameState.map((arr, rowIndex) => {
+              return arr.map((e, colIndex) => {
+                return (
+                  <SquareBox
+                    finishedArray={finishedArray}
+                    setGameState={setGameState}
+                    currentPlayer={currentPlayer}
+                    setCurrentPlayer={setCurrentPlayer}
+                    finishedState={finishedState}
+                    key={rowIndex * 3 + colIndex}
+                    id={rowIndex * 3 + colIndex}
+                  />
+                );
+              });
+            })}
           </div>
         </div>
-        <div className="game-board w-full grid grid-cols-3 grid-rows-3 gap-4 place-items-center xs:px-4 sm:px-6 md:px-14 lg:px-12 xl:px-16 2xl:px-20 xs:py-4 sm:py-4 md:py-8 lg:py-10 xl:py-10 2xl:p-10">
-          {gameState.map((arr, rowIndex) => {
-            return arr.map((e, colIndex) => {
-              return (
-                <SquareBox
-                  finishedArray={finishedArray}
-                  setGameState={setGameState}
-                  currentPlayer={currentPlayer}
-                  setCurrentPlayer={setCurrentPlayer}
-                  finishedState={finishedState}
-                  key={rowIndex * 3 + colIndex}
-                  id={rowIndex * 3 + colIndex}
-                />
-              );
-            });
-          })}
-        </div>
-      </div>
+      )}
     </div>
   );
 }
