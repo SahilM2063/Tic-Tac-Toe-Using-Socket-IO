@@ -19,6 +19,8 @@ function App() {
   const [playOnline, setPlayOnline] = useState(false);
   const [socket, setSocket] = useState(null);
   const [playerName, setPlayerName] = useState("");
+  const [opponentName, setOpponentName] = useState(null);
+  const [playingAs, setPlayingAs] = useState(null);
 
   const checkWinner = () => {
     // dynamic row and static column
@@ -72,8 +74,33 @@ function App() {
     return null;
   };
 
+  socket?.on("player_disconnected", () => {
+    setFinishedState("playerDisconnected");
+  });
+
+  socket?.on("player_move_from_server", (data) => {
+    setGameState((prevState) => {
+      let newState = [...prevState];
+      const rowIndex = Math.floor(data.state.id / 3);
+      const colIndex = data.state.id % 3;
+      newState[rowIndex][colIndex] = data.state.sign;
+      return newState;
+    });
+    setCurrentPlayer(data.state.sign === "circle" ? "cross" : "circle");
+  });
+
   socket?.on("connect", () => {
     setPlayOnline(true);
+  });
+
+  socket?.on("opponent_Not_Found", () => {
+    setOpponentName(null);
+  });
+
+  socket?.on("opponent_found", (data) => {
+    // console.log(data);
+    setPlayingAs(data.playingAs);
+    setOpponentName(data.opponentName);
   });
 
   const getPlayerName = async () => {
@@ -104,6 +131,11 @@ function App() {
     const newSocket = io("http://localhost:6969", {
       autoConnect: true,
     });
+
+    newSocket?.emit("request_to_play", {
+      playerName: userName,
+    });
+
     setSocket(newSocket);
   };
 
@@ -111,7 +143,7 @@ function App() {
     const winner = checkWinner();
     if (winner) {
       setFinishedState(winner);
-      console.log(winner);
+      // console.log(winner);
     }
   }, [gameState]);
 
@@ -123,6 +155,7 @@ function App() {
         className="absolute left-0 bottom-0 w-[22vh] xs:w-[16vh] sm:w-[18vh] md:w-[20vh]"
       />
       {finishedState &&
+        finishedState !== "playerDisconnected" &&
         (finishedState === "draw" ? (
           <h3 className="text-white font-Gilroy mb-2">
             Match is
@@ -134,11 +167,26 @@ function App() {
         ) : (
           <h3 className="text-white font-Gilroy mb-2">
             <span className="text-2xl font-medium capitalize">
-              {finishedState}{" "}
+              {finishedState === playingAs ? "You" : "Opponent"}{" "}
             </span>
             Won The Game! 💫✨
           </h3>
         ))}
+      {!finishedState && opponentName && (
+        <h3 className="text-white font-Gilroy mb-2">
+          You are playing against
+          <span className="text-2xl font-medium capitalize">
+            {" "}
+            {opponentName}
+            {"✨"}
+          </span>
+        </h3>
+      )}
+      {finishedState && finishedState === "playerDisconnected" && (
+        <h3 className="text-white font-Gilroy mb-2">
+          Player Disconnected! You Won The Game! 💫✨
+        </h3>
+      )}
       {!playOnline ? (
         <button
           onClick={handleJoinPlayer}
@@ -146,14 +194,26 @@ function App() {
         >
           Play Online
         </button>
+      ) : playOnline && !opponentName ? (
+        <p className="bg-white py-3 px-10 rounded-lg font-Gilroy font-semibold tracking-wide">
+          Waiting for opponent...👀🔪
+        </p>
       ) : (
         <div className="container w-full min-w-md xs:w-[96%] md:w-[80%] lg:w-[40%] xl:w-[40%] 2xl:w-[30%] bg-[#2B0040] rounded-2xl flex flex-col justify-center items-center py-2">
           <div className="turn-board w-full grid grid-cols-2 place-content-between gap-2 xs:px-4 sm:px-6 md:px-12 lg:px-12 xl:px-12 2xl:px-10 mt-4">
-            <div className="tag p-3 bg-[#E2BE00] rounded-lg text-center font-Gilroy font-bold text-lg">
-              You
+            <div
+              className={`tag p-3 bg-[#43115B] text-white rounded-lg text-center font-Gilroy font-bold text-lg ${
+                currentPlayer === playingAs ? "bg-[#FFF] text-black" : ""
+              }`}
+            >
+              <span>{playerName}</span>
             </div>
-            <div className="tag p-3 bg-[#48D2FE]  rounded-lg text-center font-Gilroy font-bold text-lg">
-              Opponent
+            <div
+              className={`tag p-3 bg-[#43115B] text-white rounded-lg text-center font-Gilroy font-bold text-lg ${
+                currentPlayer !== playingAs ? "bg-[#FFF] text-black" : ""
+              }`}
+            >
+              <span>{opponentName}</span>
             </div>
           </div>
           <div className="game-board w-full grid grid-cols-3 grid-rows-3 gap-4 place-items-center xs:px-4 sm:px-6 md:px-14 lg:px-12 xl:px-16 2xl:px-20 xs:py-4 sm:py-4 md:py-8 lg:py-10 xl:py-10 2xl:p-10">
@@ -161,6 +221,8 @@ function App() {
               return arr.map((e, colIndex) => {
                 return (
                   <SquareBox
+                    socket={socket}
+                    gameState={gameState}
                     finishedArray={finishedArray}
                     setGameState={setGameState}
                     currentPlayer={currentPlayer}
@@ -168,6 +230,8 @@ function App() {
                     finishedState={finishedState}
                     key={rowIndex * 3 + colIndex}
                     id={rowIndex * 3 + colIndex}
+                    playingAs={playingAs}
+                    currentElement={e}
                   />
                 );
               });

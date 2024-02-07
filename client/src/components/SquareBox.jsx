@@ -53,15 +53,23 @@ const cross_icon = (
 
 const SquareBox = ({
   setGameState,
+  gameState,
+  socket,
+  currentElement,
   id,
   setCurrentPlayer,
   currentPlayer,
   finishedState,
   finishedArray,
+  playingAs,
 }) => {
   const [icon, setIcon] = useState(null);
 
   const clickOnBox = () => {
+    if (playingAs !== currentPlayer) {
+      return;
+    }
+
     if (finishedState) {
       return;
     }
@@ -74,6 +82,12 @@ const SquareBox = ({
       }
 
       const myCurrentPlayer = currentPlayer;
+      socket.emit("player_move_from_client", {
+        state: {
+          id,
+          sign: myCurrentPlayer,
+        },
+      });
       setCurrentPlayer(currentPlayer === "circle" ? "cross" : "circle");
 
       setGameState((prevState) => {
@@ -91,9 +105,15 @@ const SquareBox = ({
       onClick={clickOnBox}
       className={`box bg-[#43115B] rounded-lg flex flex-col justify-center items-center cursor-pointer text-white w-[80px] h-[80px] md:w-[90px] md:h-[90px] ${
         finishedState ? "not-allowed" : ""
-      } ${finishedArray.includes(id) ? "bg-[#FFF]" : ""}`}
+      } ${finishedArray.includes(id) ? "bg-[#FFF]" : ""} ${
+        currentPlayer !== playingAs ? "not-allowed" : ""
+      }`}
     >
-      {icon}
+      {currentElement === "circle"
+        ? circle_icon
+        : currentElement === "cross"
+        ? cross_icon
+        : icon}
     </div>
   );
 };
