@@ -129,7 +129,7 @@ function App() {
     setPlayerName(userName);
 
     const newSocket = io(
-      "https://tic-tac-toe-backend-ohv4odvwq-makadiasahil9846-gmailcom.vercel.app/",
+      "https://tic-tac-toe-backend-g090.onrender.com/",
       {
         autoConnect: true,
       }
