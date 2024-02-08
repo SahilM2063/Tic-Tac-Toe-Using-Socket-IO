@@ -172,7 +172,7 @@ function App() {
             <span className="text-2xl font-medium capitalize">
               {finishedState === playingAs ? "You" : "Opponent"}{" "}
             </span>
-            Won The Game! 💫✨
+            Won the game! 💫✨
           </h3>
         ))}
       {!finishedState && opponentName && (
